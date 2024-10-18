@@ -16,6 +16,9 @@ from transformers.models.whisper import modeling_whisper as whisper
 from .ultravox_config import LossConfig
 from .ultravox_config import LossFunction
 from .ultravox_config import UltravoxConfig
+from .ultravox_audio_encoder import AudioEncoder
+
+USE_BUILTIN_ENCODER = True
 
 
 class UltravoxModel(transformers.LlamaPreTrainedModel):
@@ -190,7 +193,8 @@ class UltravoxModel(transformers.LlamaPreTrainedModel):
             # B x A/3200 x D
             audio_tower_output = self.audio_tower.forward(
                 audio_values.to(self.audio_tower.dtype)
-            ).last_hidden_state
+            )
+            audio_tower_output = audio_tower_output if USE_BUILTIN_ENCODER else audio_tower_output.last_hidden_state
             audio_tower_output = audio_tower_output.to(inputs_embeds.dtype)
 
             audio_embeds = self.multi_modal_projector.forward(audio_tower_output)
@@ -280,16 +284,21 @@ class UltravoxModel(transformers.LlamaPreTrainedModel):
     ) -> Union[transformers.Wav2Vec2Model, "ModifiedWhisperEncoder"]:
         if config.audio_model_id is not None:
             if "whisper" in config.audio_model_id is not None:
-                audio_tower = ModifiedWhisperEncoder.from_pretrained(
-                    config.audio_model_id, torch_dtype=config.torch_dtype
-                )
+                if USE_BUILTIN_ENCODER:
+                    audio_tower = AudioEncoder
+                else:
+                    audio_tower = ModifiedWhisperEncoder
+                audio_tower = audio_tower.from_pretrained(config.audio_model_id, torch_dtype=config.torch_dtype)
             else:
                 audio_tower = transformers.AutoModel.from_pretrained(
                     config.audio_model_id, torch_dtype=config.torch_dtype
                 )
         else:
             if "whisper" in config.audio_config._name_or_path:
-                audio_tower = ModifiedWhisperEncoder(config.audio_config)
+                if USE_BUILTIN_ENCODER:
+                    audio_tower = AudioEncoder(config.audio_config)
+                else:
+                    audio_tower = ModifiedWhisperEncoder(config.audio_config)
             else:
                 with transformers.modeling_utils.no_init_weights():
                     # we only ever use from_config if the weights are retrained, hence initializing is not

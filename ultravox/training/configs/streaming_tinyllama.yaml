@@ -1,0 +1,18 @@
+exp_name: "ultravox-stream-experiments"
+text_model: "meta-llama/Llama-3.2-1B-Instruct"
+audio_model: "openai/whisper-small"
+loss_config:
+  loss_function: "KL_Divergence"
+val_sets: ["anyinstruct", "soda", "peoplespeech"]
+batch_size: 24
+max_steps: 500 # x8x24 = 2,764,800
+data_sets: []
+data_dicts:
+  - path: "fixie-ai/librispeech_asr"
+    name: "clean"
+    splits:
+      - "train.100" # 28_539 samples
+    user_template: "Continue the following text using less than 50 words:\n\n<|audio|>"
+    assistant_template: "{{ continuation }}"
+    transcript_template: "{{ text }}"
+    weight: 1

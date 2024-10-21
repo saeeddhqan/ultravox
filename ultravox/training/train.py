@@ -80,10 +80,10 @@ def main() -> None:
 
     train(args)
 
-    if args.do_eval and is_master:
-        gc.collect()
-        torch.cuda.empty_cache()
-        evaluate(args)
+    # if args.do_eval and is_master:
+    #     gc.collect()
+    #     torch.cuda.empty_cache()
+    #     evaluate(args)
 
 
 def train(args: config_base.TrainConfig):
@@ -140,6 +140,7 @@ def train(args: config_base.TrainConfig):
     # Otherwise we'd be loading the model on every process, which uses too much CPU memory.
     with model_load_context:
         model = ultravox_model.UltravoxModel(config)
+    # model.from_pretrained('runs/ultravox-streaming-experiments/checkpoint-500/', local_files_only=True)
 
     assert model.get_input_embeddings().num_embeddings == len(
         text_tokenizer
@@ -341,6 +342,7 @@ def train(args: config_base.TrainConfig):
 
     # saves the model weights correctly (FSDP or otherwise)
     trainer.save_model(args.output_dir)
+    print(args.output_dir)
 
 
 def evaluate(args: config_base.TrainConfig):

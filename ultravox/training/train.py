@@ -5,6 +5,8 @@ import glob
 import logging
 import os
 import subprocess
+import warnings
+
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -18,6 +20,7 @@ import transformers
 import wandb
 import wandb.sdk
 
+from ultravox.inference import infer
 from ultravox.data import datasets
 from ultravox.model import data_processing
 from ultravox.model import ultravox_config
@@ -28,7 +31,10 @@ from ultravox.model import wandb_utils
 from ultravox.training import config_base
 from ultravox.training import ddp_utils
 from ultravox.training.helpers import prefetch_weights
+from ultravox.training import evaluation
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+warnings.filterwarnings("ignore", module="transformers")
 
 def prepare_dataset(
     train_args: config_base.TrainConfig,
@@ -78,11 +84,30 @@ def main() -> None:
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     is_master = local_rank == 0
 
-    train(args)
-
+    model, processor = train(args)
+    logging.info("starting evaluation...")
+    gc.collect()
+    torch.cuda.empty_cache()
+    model.merge_and_unload()
+    processor.tokenizer.padding_side = "left"
+    inference = infer.LocalInference(
+        model=model,
+        processor=processor,
+        tokenizer=processor.tokenizer,
+        device=args.device,
+        dtype=getattr(torch, args.data_type),
+    )
+    metrics = evaluation.evaluate(
+        inference,
+        # data_dir=args.data_dir,
+        num_procs=args.eval_num_procs,
+        num_samples=args.eval_num_samples,
+        max_new_tokens=args.eval_max_new_tokens,
+        log_dir=wandb.run.dir if wandb.run else str(args.logs_dir),
+    )
+    print(metrics)
     # if args.do_eval and is_master:
-    #     gc.collect()
-    #     torch.cuda.empty_cache()
+
     #     evaluate(args)
 
 
@@ -343,6 +368,7 @@ def train(args: config_base.TrainConfig):
     # saves the model weights correctly (FSDP or otherwise)
     trainer.save_model(args.output_dir)
     print(args.output_dir)
+    return model, processor
 
 
 def evaluate(args: config_base.TrainConfig):

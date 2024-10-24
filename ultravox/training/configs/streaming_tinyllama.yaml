@@ -1,5 +1,5 @@
 # SLM with ultravox & llama3.1, trained wtih knowledge distillation.
-exp_name: "ultravox-streaming-experiments"
+exp_name: "ultravox-streaming-experiments-raw"
 
 # Make sure to accept the license agreement on huggingface hub
 text_model: "meta-llama/Llama-3.2-1B-Instruct"
@@ -14,10 +14,19 @@ train_sets:
   - name: librispeech-other-continuation
   - name: peoplespeech-clean-continuation
     weight: 8
- 
+  - name: commonvoice-en-continuation
+    weight: 8
+  - name: librispeech-clean-transcription
+  - name: librispeech-other-transcription
+  - name: peoplespeech-clean-transcription
+    weight: 0.8
+  - name: commonvoice-en-transcription
+    weight: 0.8
 
+
+# Temporarily remove heysquad_human from val_sets as it causes the training to fail.
 val_sets:
   - name: peoplespeech
 
 batch_size: 24
-max_steps: 500 # x8x24 = 2,764,800
+max_steps: 10000 # x8x24 = 2,764,800

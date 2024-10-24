@@ -392,9 +392,9 @@ class VoiceDataset(SizedIterableDataset):
                     > self._args.max_audio_duration_secs
                 ):
                     duration = sample.audio.shape[-1] / SAMPLE_RATE
-                    warnings.warn(
-                        f"Audio length ({duration}s) exceeds max audio duration ({self._args.max_audio_duration_secs}s), skipping sample."
-                    )
+                    # warnings.warn(
+                    #     f"Audio length ({duration}s) exceeds max audio duration ({self._args.max_audio_duration_secs}s), skipping sample."
+                    # )
                     continue
 
             yield sample
@@ -649,7 +649,7 @@ class Range(SizedIterableDataset):
         self._dataset = dataset
         self._length = num_samples or len(dataset)
         if self._length > len(dataset):
-            raise ValueError("num_samples exceeds dataset length.")
+            raise ValueError(f"num_samples exceeds dataset length.{len(dataset)}, {self._length}")
 
     def __iter__(self):
         for i, sample in enumerate(self._dataset):
